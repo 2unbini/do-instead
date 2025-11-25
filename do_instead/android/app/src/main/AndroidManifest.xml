@@ -30,6 +30,15 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
@@ -42,4 +51,12 @@
             <data android:mimeType="text/plain"/>
         </intent>
     </queries>
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- For apps targeting Android 12 (API 31) or lower, use SCHEDULE_EXACT_ALARM -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32"/>
+    <!-- For apps targeting Android 13 (API 33) or higher, use USE_EXACT_ALARM -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+
 </manifest>
