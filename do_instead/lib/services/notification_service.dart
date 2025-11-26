@@ -1,3 +1,5 @@
+import 'package:do_instead/services/settings_service.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -5,6 +7,7 @@ import 'package:timezone/timezone.dart' as tz;
 class NotificationService {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
+  final SettingsService _settingsService = SettingsService();
 
   Future<void> init() async {
     // Initialize native timezone support
@@ -52,11 +55,12 @@ class NotificationService {
   }
 
   Future<void> scheduleDailyReminder() async {
+    final time = await _settingsService.getReminderTime();
     await _flutterLocalNotificationsPlugin.zonedSchedule(
       0,
       'Daily Reminder',
       'Don\'t forget to check in with your AI agent today!',
-      _nextInstanceOfTenAM(),
+      _nextInstanceOfTime(time),
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_reminder_channel_id',
@@ -70,10 +74,10 @@ class NotificationService {
     );
   }
 
-  tz.TZDateTime _nextInstanceOfTenAM() {
+  tz.TZDateTime _nextInstanceOfTime(TimeOfDay time) {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, 10);
+        tz.TZDateTime(tz.local, now.year, now.month, now.day, time.hour, time.minute);
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }

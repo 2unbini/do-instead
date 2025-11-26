@@ -1,5 +1,6 @@
 import 'package:do_instead/features/chat/screens/chat_screen.dart';
 import 'package:do_instead/features/reports/screens/reports_screen.dart';
+import 'package:do_instead/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const List<Widget> _widgetOptions = <Widget>[
     ChatScreen(),
     ReportsScreen(),
+    SettingsScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -40,6 +42,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.show_chart_outlined),
             activeIcon: Icon(Icons.show_chart),
             label: 'Reports',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            activeIcon: Icon(Icons.settings),
+            label: 'Settings',
           ),
         ],
         currentIndex: _selectedIndex,

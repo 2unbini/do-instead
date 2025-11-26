@@ -39,11 +39,17 @@ class _ChatScreenState extends State<ChatScreen> {
       _isLoading = true;
     });
 
-    final agentMessage = await _agentService.getResponse(text);
+    final agentMessage = Message(text: '', sender: MessageSender.agent);
+    _messages.add(agentMessage);
 
-    setState(() {
-      _messages.add(agentMessage);
-      _isLoading = false;
+    _agentService.getResponse(text, _messages).listen((chunk) {
+      setState(() {
+        agentMessage.text += chunk;
+      });
+    }).onDone(() {
+      setState(() {
+        _isLoading = false;
+      });
     });
   }
 

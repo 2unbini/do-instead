@@ -13,7 +13,7 @@ class Message {
   }) : id = const Uuid().v4();
 
   final String id;
-  final String text;
+  String text;
   final MessageSender sender;
   final bool isRecommendation;
 }
