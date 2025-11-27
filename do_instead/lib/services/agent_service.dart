@@ -1,6 +1,6 @@
 import 'package:do_instead/models/message.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:do_instead/services/api_key.dart';
 
 class AgentService {
   final GenerativeModel _model;
@@ -8,27 +8,23 @@ class AgentService {
   AgentService()
       : _model = GenerativeModel(
           model: 'gemini-2.5-flash',
-          apiKey: geminiApiKey,
-          // SDK ^0.4.0 이상에서는 시스템 프롬프트를 모델 생성자에 직접 설정하는 것을 권장합니다.
+          apiKey: dotenv.get("GEMINI_API_KEY"),
           systemInstruction: Content.system(
             'You are "Doobie", a friendly and encouraging AI assistant for the "doInstead" app. Your primary goal is to help users achieve their self-improvement goals.',
           ),
         );
 
-  // Message 리스트를 SDK의 Content 객체 리스트로 변환
   List<Content> _mapHistoryToContent(List<Message> history) {
     return history.map((m) {
-      final role = m.sender == 'User' ? 'user' : 'model';
+      final role = m.sender == MessageSender.user ? 'user' : 'model';
       return Content(role, [TextPart(m.text)]);
     }).toList();
   }
 
   Stream<String> getResponse(String message, List<Message> history) {
     try {
-      // 1. 대화 기록 변환
       final conversationContents = _mapHistoryToContent(history);
 
-      // 2. 이번 턴의 사용자 메시지와 태스크 지시사항 구성
       final taskInstruction = '''
         
 **User's Goal:** "I want to reduce my screen time and be more active."
@@ -49,10 +45,8 @@ class AgentService {
 
       conversationContents.add(currentMessageContent);
 
-      // 3. 스트림 응답 요청
       final responseStream = _model.generateContentStream(conversationContents);
 
-      // 4. 응답 처리
       return responseStream.map((response) {
         return response.text ?? '';
       }).where((text) => text.isNotEmpty);
