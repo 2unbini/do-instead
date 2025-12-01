@@ -1,32 +1,74 @@
 import 'package:do_instead/presentation/home/screens/home_screen.dart';
 import 'package:do_instead/presentation/onboarding/screens/onboarding_screen.dart';
-import 'package:do_instead/firebase_options.dart';
-import 'package:do_instead/data/services/notification_service.dart';
-import 'package:do_instead/data/services/storage_service.dart';
+import 'package:do_instead/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:do_instead/app/app.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 void main() async {
-  // Ensure that plugin services are initialized.
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Firebase 초기화 (플랫폼별 설정 자동 적용)
+  
+  // 1. Firebase 초기화
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
   
-  await dotenv.load(fileName: ".env");
+  // 2. 환경변수 로드
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    print("Warning: .env file not found.");
+  }
 
-  // Initialize services.
-  final storageService = StorageService();
-  final notificationService = NotificationService();
-  await notificationService.init();
+  runApp(
+    // 3. Riverpod Scope
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
+}
 
-  final isOnboardingComplete = await storageService.isOnboardingComplete();
-  final initialPage = isOnboardingComplete ? const HomeScreen() : const OnboardingScreen();
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
-  runApp(ProviderScope(child: MyApp(home: initialPage)));
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Do Instead',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+      ),
+      home: const AuthGate(),
+    );
+  }
+}
+
+/// 로그인 분기 처리 (Gatekeeper)
+class AuthGate extends ConsumerWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+
+    return authState.when(
+      data: (user) {
+        // 비로그인 -> 온보딩
+        if (user == null) {
+          return const OnboardingScreen();
+        }
+        // 로그인 -> 홈 스크린 (대시보드/채팅/설정 포함)
+        return const HomeScreen();
+      },
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, st) => Scaffold(
+        body: Center(child: Text('Error: $e')),
+      ),
+    );
+  }
 }

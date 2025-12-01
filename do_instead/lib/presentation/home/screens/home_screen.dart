@@ -1,56 +1,52 @@
 import 'package:do_instead/presentation/chat/screens/chat_screen.dart';
 import 'package:do_instead/presentation/dashboard/screens/dashboard_screen.dart';
 import 'package:do_instead/presentation/settings/screens/settings_screen.dart';
+import 'package:do_instead/providers/navindex_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 현재 선택된 탭 인덱스 구독
+    final currentIndex = ref.watch(navIndexProvider);
+    
+    // 탭별 화면 정의
+    final List<Widget> pages = [
+      const DashboardTab(),
+      const ChatTab(),
+      const SettingTab(),
+    ];
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-
-  static const List<Widget> _widgetOptions = <Widget>[
-    ChatScreen(),
-    DashboardScreen(),
-    SettingsScreen(),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: _widgetOptions.elementAt(_selectedIndex),
+      body: IndexedStack(
+        index: currentIndex,
+        children: pages,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: (index) {
+          ref.read(navIndexProvider.notifier).state = index;
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard),
+            label: '대시보드',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.chat_bubble_outline),
-            activeIcon: Icon(Icons.chat_bubble),
-            label: 'Agent',
+            selectedIcon: Icon(Icons.chat_bubble),
+            label: '채팅',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.show_chart_outlined),
-            activeIcon: Icon(Icons.show_chart),
-            label: 'Reports',
-          ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(Icons.settings_outlined),
-            activeIcon: Icon(Icons.settings),
-            label: 'Settings',
+            selectedIcon: Icon(Icons.settings),
+            label: '설정',
           ),
         ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
       ),
     );
   }

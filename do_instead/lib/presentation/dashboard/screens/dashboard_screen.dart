@@ -1,31 +1,44 @@
-import 'package:do_instead/presentation/dashboard/widgets/report_card.dart';
+import 'package:do_instead/presentation/dashboard/viewmodels/dashboard_viewmodel.dart';
+import 'package:do_instead/providers/navindex_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+class DashboardTab extends ConsumerWidget {
+  const DashboardTab({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(dashboardStatsProvider);
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Weekly Summary'),
-      ),
-      body: ListView(
-        children: const [
-          ReportCard(
-            title: 'Succeed',
-            description: 'Here\'s a summary of your succeed.',
-          ),
-          ReportCard(
-            title: 'Failure',
-            description: 'Here\'s a summary of your failure.',
-          ),
-        ],
+      appBar: AppBar(title: const Text('대시보드')),
+      body: statsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('에러 발생: $err')),
+        data: (stats) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.timer_outlined, size: 80, color: Colors.blue),
+                const SizedBox(height: 16),
+                Text(
+                  '${stats.savedMinutes}분',
+                  style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+                ),
+                const Text('절약한 스크린 타임', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () {
+                    // 채팅 탭(인덱스 1)으로 이동
+                    ref.read(navIndexProvider.notifier).state = 1;
+                  },
+                  child: const Text('Doobie와 대화하러 가기'),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

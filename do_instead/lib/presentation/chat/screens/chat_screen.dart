@@ -1,140 +1,124 @@
-import 'package:do_instead/presentation/chat/widgets/chat_bubble.dart';
-import 'package:do_instead/data/models/message.dart';
-import 'package:do_instead/data/models/recommendation.dart';
-import 'package:do_instead/data/services/agent_service.dart';
-import 'package:do_instead/data/services/storage_service.dart';
+import 'package:do_instead/presentation/chat/viewmodels/chat_viewmodel.dart';
+import 'package:do_instead/presentation/chat/widgets/activity_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+class ChatTab extends ConsumerStatefulWidget {
+  const ChatTab({super.key});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  ConsumerState<ChatTab> createState() => _ChatTabState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
-  final TextEditingController _textController = TextEditingController();
-  final AgentService _agentService = AgentService();
-  final StorageService _storageService = StorageService();
-  final List<Message> _messages = [];
-  bool _isLoading = false;
+class _ChatTabState extends ConsumerState<ChatTab> {
+  final _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
-  @override
-  void initState() {
-    super.initState();
-    _messages.add(
-      Message(text: 'Hello! How can I help you today?', sender: MessageSender.agent),
-    );
-  }
-
-  void _handleSendPressed() async {
-    final text = _textController.text;
-    if (text.isEmpty || _isLoading) return;
-
-    _textController.clear();
-    final userMessage = Message(text: text, sender: MessageSender.user);
-
-    setState(() {
-      _messages.add(userMessage);
-      _isLoading = true;
-    });
-
-    final agentMessage = Message(text: '', sender: MessageSender.agent);
-    _messages.add(agentMessage);
-
-    _agentService.getResponse(text, _messages).listen((chunk) {
-      setState(() {
-        agentMessage.text += chunk;
-      });
-    }).onDone(() {
-      setState(() {
-        _isLoading = false;
-      });
-    });
-  }
-
-  void _handleFeedback(String messageId, bool success) {
-    final message = _messages.firstWhere((m) => m.id == messageId);
-
-    final recommendation = Recommendation(
-      text: message.text,
-      status: success ? RecommendationStatus.success : RecommendationStatus.failure,
-      timestamp: DateTime.now(),
-    );
-    _storageService.saveRecommendation(recommendation);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success ? 'Great job! I\'ve noted your success.' : 'No worries. I\'ve noted that.'),
-        backgroundColor: success ? Colors.green : Colors.red,
-      ),
-    );
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final chatState = ref.watch(chatViewModelProvider);
+    final viewModel = ref.read(chatViewModelProvider.notifier);
+
+    // 메시지 추가 시 스크롤
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('AI Agent'),
-      ),
+      appBar: AppBar(title: const Text('Doobie Chat')),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.all(8),
-              reverse: true,
-              itemCount: _messages.length,
+              controller: _scrollController,
+              itemCount: chatState.messages.length,
+              padding: const EdgeInsets.only(bottom: 16, top: 16),
               itemBuilder: (context, index) {
-                final message = _messages[_messages.length - 1 - index];
-                return ChatBubble(
-                  message: message,
-                  onFeedback: _handleFeedback,
-                );
+                final msg = chatState.messages[index];
+
+                // 추천 활동 카드인 경우
+                if (msg.activity != null) {
+                  return Column(
+                    children: [
+                      if (msg.text.isNotEmpty)
+                         _buildMessageBubble(msg.text, false),
+                      ActivityCard(
+                        activity: msg.activity!,
+                        onLike: () => viewModel.sendFeedback(msg.activity!, true),
+                        onDislike: () => viewModel.sendFeedback(msg.activity!, false),
+                      ),
+                    ],
+                  );
+                }
+
+                return _buildMessageBubble(msg.text, msg.isUser);
               },
             ),
           ),
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: LinearProgressIndicator(),
+          if (chatState.isLoading)
+            const LinearProgressIndicator(minHeight: 2),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      hintText: '메시지를 입력하세요...',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    onSubmitted: (val) {
+                      viewModel.sendMessage(val);
+                      _controller.clear();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.send),
+                  onPressed: () {
+                    viewModel.sendMessage(_controller.text);
+                    _controller.clear();
+                  },
+                ),
+              ],
             ),
-          _buildTextComposer(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTextComposer() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0, -1),
-            blurRadius: 2,
-            color: const Color.fromRGBO(0, 0, 0, 0.05),
+  Widget _buildMessageBubble(String text, bool isUser) {
+    return ListTile(
+      title: Align(
+        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isUser ? Colors.blue[100] : Colors.grey[200],
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(12),
+              topRight: const Radius.circular(12),
+              bottomLeft: isUser ? const Radius.circular(12) : const Radius.circular(0),
+              bottomRight: isUser ? const Radius.circular(0) : const Radius.circular(12),
+            ),
           ),
-        ],
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _textController,
-                decoration: const InputDecoration.collapsed(
-                  hintText: 'Send a message...',
-                ),
-                onSubmitted: (_) => _handleSendPressed(),
-                enabled: !_isLoading,
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.send),
-              onPressed: _isLoading ? null : _handleSendPressed,
-            ),
-          ],
+          child: Text(text),
         ),
       ),
     );
