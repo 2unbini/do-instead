@@ -1,14 +1,14 @@
-import 'package:do_instead/features/reports/widgets/report_card.dart';
+import 'package:do_instead/presentation/dashboard/widgets/report_card.dart';
 import 'package:flutter/material.dart';
 
-class ReportsScreen extends StatefulWidget {
-  const ReportsScreen({super.key});
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
 
   @override
-  State<ReportsScreen> createState() => _ReportsScreenState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _ReportsScreenState extends State<ReportsScreen> {
+class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

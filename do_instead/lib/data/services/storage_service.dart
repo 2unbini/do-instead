@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:do_instead/models/recommendation.dart';
+import 'package:do_instead/data/models/recommendation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {

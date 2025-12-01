@@ -1,8 +1,8 @@
-import 'package:do_instead/features/chat/widgets/chat_bubble.dart';
-import 'package:do_instead/models/message.dart';
-import 'package:do_instead/models/recommendation.dart';
-import 'package:do_instead/services/agent_service.dart';
-import 'package:do_instead/services/storage_service.dart';
+import 'package:do_instead/presentation/chat/widgets/chat_bubble.dart';
+import 'package:do_instead/data/models/message.dart';
+import 'package:do_instead/data/models/recommendation.dart';
+import 'package:do_instead/data/services/agent_service.dart';
+import 'package:do_instead/data/services/storage_service.dart';
 import 'package:flutter/material.dart';
 
 class ChatScreen extends StatefulWidget {

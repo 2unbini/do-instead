@@ -1,6 +1,6 @@
-import 'package:do_instead/features/chat/screens/chat_screen.dart';
-import 'package:do_instead/features/reports/screens/reports_screen.dart';
-import 'package:do_instead/features/settings/screens/settings_screen.dart';
+import 'package:do_instead/presentation/chat/screens/chat_screen.dart';
+import 'package:do_instead/presentation/dashboard/screens/dashboard_screen.dart';
+import 'package:do_instead/presentation/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -15,7 +15,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const List<Widget> _widgetOptions = <Widget>[
     ChatScreen(),
-    ReportsScreen(),
+    DashboardScreen(),
     SettingsScreen(),
   ];
 

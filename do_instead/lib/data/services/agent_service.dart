@@ -1,4 +1,4 @@
-import 'package:do_instead/models/message.dart';
+import 'package:do_instead/data/models/message.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 

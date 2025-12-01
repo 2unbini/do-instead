@@ -1,4 +1,4 @@
-import 'package:do_instead/models/message.dart';
+import 'package:do_instead/data/models/message.dart';
 import 'package:flutter/material.dart';
 
 class ChatBubble extends StatefulWidget {

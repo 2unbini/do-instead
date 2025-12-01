@@ -1,7 +1,7 @@
-import 'package:do_instead/features/home/home_screen.dart';
-import 'package:do_instead/features/onboarding/widgets/goal_input.dart';
-import 'package:do_instead/features/onboarding/widgets/onboarding_page.dart';
-import 'package:do_instead/services/storage_service.dart';
+import 'package:do_instead/presentation/home/screens/home_screen.dart';
+import 'package:do_instead/presentation/onboarding/widgets/goal_input.dart';
+import 'package:do_instead/presentation/onboarding/widgets/onboarding_page.dart';
+import 'package:do_instead/data/services/storage_service.dart';
 import 'package:flutter/material.dart';
 
 class OnboardingScreen extends StatefulWidget {

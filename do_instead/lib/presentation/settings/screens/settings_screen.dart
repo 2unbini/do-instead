@@ -1,5 +1,5 @@
-import 'package:do_instead/services/notification_service.dart';
-import 'package:do_instead/services/settings_service.dart';
+import 'package:do_instead/data/services/notification_service.dart';
+import 'package:do_instead/data/services/settings_service.dart';
 import 'package:flutter/material.dart';
 
 class SettingsScreen extends StatefulWidget {
