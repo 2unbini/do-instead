@@ -5,8 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class UserRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> saveUser(UserModel user) async {
-    await _firestore.collection('users').doc(user.id).set(user.toJson());
+  // UserProfile 객체를 받아 저장하도록 수정
+  Future<void> saveUser(UserProfile user) async {
+    await _firestore.collection('users').doc(user.uid).set(user.toJson());
   }
 }
 

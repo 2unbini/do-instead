@@ -1,5 +1,5 @@
 import 'package:do_instead/presentation/chat/viewmodels/chat_viewmodel.dart';
-import 'package:do_instead/presentation/chat/widgets/activity_card.dart';
+import 'package:do_instead/presentation/chat/widgets/interactive_activity_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,11 +14,36 @@ class _ChatTabState extends ConsumerState<ChatTab> {
   final _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
+  @override
+  void initState() {
+    super.initState();
+    // 화면 진입 시 초기화 (대화 내역 불러오기 or 첫인사)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(chatViewModelProvider.notifier).initializeChat();
+    });
+
+    // 스크롤 리스너 (무한 스크롤)
+    _scrollController.addListener(() {
+      // 스크롤이 리스트의 끝(과거 메시지 쪽)에 도달했는지 감지
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        ref.read(chatViewModelProvider.notifier).loadMoreMessages();
+      }
+    });
+  }
+
+    void _scrollIfNeeded(BuildContext context) {
+    if (!_scrollController.hasClients) return;
+
+    final position = _scrollController.position;
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+
+    // reverse:true 이므로 pixels=0 이 시각적 바닥(최신 메시지)
+    final double threshold = keyboardInset > 0 ? keyboardInset + 32 : 48;
+
+    if (position.pixels <= threshold) {
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
+        0, // reverse:true에서 0이 바닥
+        duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
       );
     }
@@ -29,42 +54,59 @@ class _ChatTabState extends ConsumerState<ChatTab> {
     final chatState = ref.watch(chatViewModelProvider);
     final viewModel = ref.read(chatViewModelProvider.notifier);
 
-    // 메시지 추가 시 스크롤
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+        // 새 메시지가 늘었을 때만, 화면 바닥에 있을 때 자동 스크롤
+    ref.listen(chatViewModelProvider, (previous, next) {
+      if (next.messages.length > (previous?.messages.length ?? 0)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _scrollIfNeeded(context);
+        });
+      }
+    });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Doobie Chat')),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
+              reverse: true,
               controller: _scrollController,
-              itemCount: chatState.messages.length,
-              padding: const EdgeInsets.only(bottom: 16, top: 16),
+              itemCount: chatState.messages.length + (chatState.isLoadingMore ? 1 : 0),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               itemBuilder: (context, index) {
-                final msg = chatState.messages[index];
-
-                // 추천 활동 카드인 경우
-                if (msg.activity != null) {
-                  return Column(
-                    children: [
-                      if (msg.text.isNotEmpty)
-                         _buildMessageBubble(msg.text, false),
-                      ActivityCard(
-                        activity: msg.activity!,
-                        onLike: () => viewModel.sendFeedback(msg.activity!, true),
-                        onDislike: () => viewModel.sendFeedback(msg.activity!, false),
-                      ),
-                    ],
-                  );
+                if (index == chatState.messages.length) {
+                  return const Center(child: Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ));
                 }
 
-                return _buildMessageBubble(msg.text, msg.isUser);
+                final msg = chatState.messages[index];
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (msg.text.isNotEmpty)
+                      _buildMessageBubble(msg.text, msg.isUser),
+                    
+                    if (msg.activity != null)
+                      InteractiveActivityCard(
+                        activity: msg.activity!,
+                        feedbackState: msg.feedbackState,
+                        selectedOption: msg.selectedOption,
+                        onStart: () => viewModel.startActivity(msg.id),
+                        onComplete: () => viewModel.completeActivity(msg.id, msg.activity!),
+                        onRetry: (preference) => viewModel.requestAlternative(msg.id, msg.activity!, preference),
+                      ),
+                  ],
+                );
               },
             ),
           ),
           if (chatState.isLoading)
-            const LinearProgressIndicator(minHeight: 2),
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -72,10 +114,10 @@ class _ChatTabState extends ConsumerState<ChatTab> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: '메시지를 입력하세요...',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: InputDecoration(
+                      hintText: '메시지 입력...',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
                     onSubmitted: (val) {
                       viewModel.sendMessage(val);
@@ -84,16 +126,15 @@ class _ChatTabState extends ConsumerState<ChatTab> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
+                CircleAvatar(
+                  backgroundColor: Colors.blueAccent,
+                  child: IconButton(
+                    icon: const Icon(Icons.send, color: Colors.white, size: 20),
+                    onPressed: () {
+                      viewModel.sendMessage(_controller.text);
+                      _controller.clear();
+                    },
                   ),
-                  icon: const Icon(Icons.send),
-                  onPressed: () {
-                    viewModel.sendMessage(_controller.text);
-                    _controller.clear();
-                  },
                 ),
               ],
             ),
@@ -104,21 +145,23 @@ class _ChatTabState extends ConsumerState<ChatTab> {
   }
 
   Widget _buildMessageBubble(String text, bool isUser) {
-    return ListTile(
-      title: Align(
-        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: isUser ? Colors.blue[100] : Colors.grey[200],
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(12),
-              topRight: const Radius.circular(12),
-              bottomLeft: isUser ? const Radius.circular(12) : const Radius.circular(0),
-              bottomRight: isUser ? const Radius.circular(0) : const Radius.circular(12),
-            ),
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isUser ? Colors.blueAccent : Colors.grey[200],
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: isUser ? const Radius.circular(16) : const Radius.circular(2),
+            bottomRight: isUser ? const Radius.circular(2) : const Radius.circular(16),
           ),
-          child: Text(text),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(color: isUser ? Colors.white : Colors.black87),
         ),
       ),
     );
